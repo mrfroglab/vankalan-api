@@ -3,6 +3,8 @@ FROM node:22-alpine AS builder
 
 WORKDIR /app
 
+RUN apk add --no-cache openssl
+
 RUN corepack enable && corepack prepare pnpm@latest --activate
 
 COPY package.json pnpm-workspace.yaml* ./
@@ -13,23 +15,21 @@ RUN pnpm install --frozen-lockfile=false
 COPY tsconfig.json ./
 COPY src ./src
 
-RUN pnpm prisma:generate && pnpm build
+RUN pnpm prisma:generate && pnpm build && pnpm prune --prod
 
 # Stage 2: Production Runner
 FROM node:22-alpine AS runner
 
 WORKDIR /app
 
+RUN apk add --no-cache openssl
+
 ENV NODE_ENV=production
 ENV PORT=3001
 
-RUN corepack enable && corepack prepare pnpm@latest --activate
-
-COPY package.json pnpm-workspace.yaml* ./
+COPY package.json ./
 COPY prisma ./prisma/
-
-RUN pnpm install --prod --frozen-lockfile=false && pnpm prisma:generate
-
+COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
 
 EXPOSE 3001
