@@ -1,0 +1,152 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Category {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model MenuItem {
+  id           String   @id
+  name         String
+  description  String   @default("")
+  price        Int
+  category     String
+  kind         String   @default("noodle")
+  available    Boolean  @default(true)
+  egg          Boolean  @default(false)
+  popular      Boolean  @default(false)
+  temperatures String   @default("[]") // JSON string of ('Panas' | 'Dingin')[]
+  coldExtra    Int      @default(0)
+  image        String?
+  rating       Float?   @default(5.0)
+  reviewsCount Int?     @default(0)
+  prepTime     Int?     @default(10)
+  badge        String?
+  portion      String?  @default("Reguler")
+  mealTime     String   @default("[]") // JSON string of meal times
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Shift {
+  id        String   @id
+  name      String
+  phone     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model StoreSettings {
+  id               String   @id @default("default")
+  open             Boolean  @default(true)
+  estimate         Int      @default(10)
+  eggPrice         Int      @default(4000)
+  recipientShiftId String   @default("s1")
+  waConnected      Boolean  @default(true)
+  updatedAt        DateTime @updatedAt
+}
+
+enum OrderPaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  EXPIRED
+}
+
+enum OrderFulfillmentStatus {
+  NEW
+  PREPARING
+  READY
+  COMPLETED
+  CANCELLED
+}
+
+enum OrderNotificationStatus {
+  QUEUED
+  SENT
+  FAILED
+  UNKNOWN
+}
+
+enum RefundStatus {
+  NONE
+  PENDING
+  PARTIAL_REFUNDED
+  FULL_REFUNDED
+}
+
+model Order {
+  id               String                  @id
+  token            String                  @unique
+  number           String                  @unique
+  created          BigInt
+  pickup           BigInt
+  estimate         Int                     @default(10)
+  mode             String                  @default("asap") // 'asap' | 'scheduled'
+  name             String
+  phone            String
+  note             String?
+  payment          OrderPaymentStatus      @default(PENDING)
+  fulfillment      OrderFulfillmentStatus  @default(NEW)
+  notification     OrderNotificationStatus @default(QUEUED)
+  recipientShiftId String                  @default("s1")
+  total            Int
+  paidAt           BigInt?
+  completedAt      BigInt?
+  cancelReason     String?
+  attempts         Int                     @default(0)
+  snapToken        String?
+  items            OrderItem[]
+  refund           RefundRecord?
+  notificationJobs NotificationJob[]
+  createdAt        DateTime                @default(now())
+  updatedAt        DateTime                @updatedAt
+}
+
+model OrderItem {
+  id      String  @id @default(cuid())
+  orderId String
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  name    String
+  qty     Int
+  unit    Int
+  egg     Boolean @default(false)
+  temp    String? // 'Panas' | 'Dingin'
+  note    String?
+}
+
+model RefundRecord {
+  id          String       @id @default(cuid())
+  orderId     String       @unique
+  order       Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  status      RefundStatus @default(PENDING)
+  amount      Int
+  reason      String
+  confirmedAt BigInt?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+model NotificationJob {
+  id          String                  @id @default(cuid())
+  orderId     String
+  order       Order                   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  recipient   String
+  message     String
+  status      OrderNotificationStatus @default(QUEUED)
+  attempts    Int                     @default(0)
+  nextRetryAt BigInt?
+  lastError   String?
+  createdAt   DateTime                @default(now())
+  updatedAt   DateTime                @updatedAt
+}

@@ -1,0 +1,28 @@
+services:
+  api:
+    image: ghcr.io/mrfroglab/vankalan-api:latest
+    container_name: vankalan-api
+    restart: unless-stopped
+    env_file:
+      - .env
+    networks:
+      - gateway-net
+    depends_on:
+      - db
+
+  db:
+    image: postgres:16-alpine
+    container_name: vankalan-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-vankalan}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-vankalan_secret}
+      POSTGRES_DB: ${POSTGRES_DB:-vankalan_db}
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+    networks:
+      - gateway-net
+
+networks:
+  gateway-net:
+    external: true
